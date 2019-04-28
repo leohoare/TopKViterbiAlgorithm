@@ -22,9 +22,27 @@ def parseStateFile(file):
         data[i] = list(map(lambda x:x/total if x!=0 else 0, data[i]))
     with np.errstate(divide='ignore'):
         return cols, np.log(data)
-
-# parses symbol file
+      
+# parses symbol file  
 def parseSymbolFile(file,N):
+    file = open(file)
+    lines = [line.strip().split() for line in file]
+    col_count = int(lines[0][0])
+    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK']
+    out = np.ones((N,col_count+1))
+    for row in lines[(col_count+1):]:
+        out[int(row[0]),int(row[1])] = int(row[2])+1
+    for index in range(out.shape[0]):
+        total = sum(out[index])
+        prob = lambda t: t/(total)
+        func = np.vectorize(prob)
+        out[index]  = func(out[index])
+    with np.errstate(divide='ignore'):
+        return cols, np.log(out)
+
+# parses symbol file, with different probabilities for different kind
+# of UNK symbols
+def parseSymbolFile_advanced(file,N):
     file = open(file)
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
@@ -63,6 +81,25 @@ def findVect(matrix,symbls, value):
     try: 
         return matrix[:,symbls.index(value)]
     except ValueError:
+        return matrix[:,symbls.index('UNK')]
+
+def findVect2(matrix,symbls, value):
+    try: 
+        return matrix[np.newaxis, :,symbls.index(value)]
+    except ValueError:
+        return matrix[np.newaxis, :,symbls.index('UNK')]
+
+def findValue(matrix,symbls, x, y):
+    try: 
+        return matrix[x,symbls.index(y)]
+    except ValueError:
+        return matrix[x,symbls.index('UNK')]
+
+#Helpers for advanced decoding
+def findVect_adv(matrix,symbls, value):
+    try: 
+        return matrix[:,symbls.index(value)]
+    except ValueError:
         return return_unk(matrix,symbls, value)
 
 def return_unk(matrix, symbls, value):
@@ -72,7 +109,7 @@ def return_unk(matrix, symbls, value):
         return matrix[:,symbls.index('UNK-T')]
     return matrix[:,symbls.index('UNK')]
 
-def findVect2(matrix,symbls, value):
+def findVect_adv2(matrix,symbls, value):
     print(value)
     try: 
         return matrix[np.newaxis, :,symbls.index(value)]
@@ -112,9 +149,7 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
     symbol_cols, symbol_matrix = parseSymbolFile(Symbol_File,len(state_cols))
     queries = parseQueryFile(Query_File)
     out = []
-    ppp = True
     for query in queries:
-        print(query)
         N = len(state_cols)
         Q = len(query)
         logprobs    = np.empty((N,Q), 'd')
@@ -124,11 +159,47 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
         paths[:, 0] = state_cols.index("BEGIN")
         # normal cases
         for i in range(1, Q):
-            if ppp:
-                #print(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T)
-                #print(np.max(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T, 1))
-                ppp = False
             logprobs[:, i] = np.max(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T, 1)
+            paths[:, i] = np.argmax(logprobs[:, i - 1] + state_matrix.T, 1)
+        # case for end
+        logprobs[:,Q-1] = np.max(logprobs[:, Q-2] + state_matrix.T)
+        # build path
+        path = [0 for _ in range(Q)]
+        path[-1] = state_cols.index("END")
+        for i in reversed(range(1, Q)):
+            path[i - 1] = paths[path[i], i]
+        path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1])]
+        out.append(path)
+    return out
+
+# Question 2
+def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the heading of the function
+    pass # Replace this line with your implementation...
+
+
+# Question 3 + Bonus
+def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the heading of the function
+    state_cols, state_matrix = parseStateFile(State_File)
+    symbol_cols, symbol_matrix = parseSymbolFile_advanced(Symbol_File,len(state_cols))
+    queries = parseQueryFile(Query_File)
+    out = []
+    ppp = True
+    for query in queries:
+        print(query)
+        N = len(state_cols)
+        Q = len(query)
+        logprobs    = np.empty((N,Q), 'd')
+        paths       = np.empty((N,Q), 'B')
+        # special case for begin
+        logprobs[:, 0] = state_matrix[state_cols.index("BEGIN")] +  findVect_adv(symbol_matrix,symbol_cols,query[0])
+        paths[:, 0] = state_cols.index("BEGIN")
+        # normal cases
+        for i in range(1, Q):
+            if ppp:
+                #print(logprobs[:, i - 1] + state_matrix.T + findVect_adv2(symbol_matrix,symbol_cols,query[i]).T)
+                #print(np.max(logprobs[:, i - 1] + state_matrix.T + findVect_adv2(symbol_matrix,symbol_cols,query[i]).T, 1))
+                ppp = False
+            logprobs[:, i] = np.max(logprobs[:, i - 1] + state_matrix.T + findVect_adv2(symbol_matrix,symbol_cols,query[i]).T, 1)
             paths[:, i] = np.argmax(logprobs[:, i - 1] + state_matrix.T, 1)
         # case for end
         logprobs[:,Q-1] = np.max(logprobs[:, Q-2] + state_matrix.T)
@@ -151,16 +222,6 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
             
     print('\n\nTOTAL COUNT = ', count)
     return out
-
-# Question 2
-def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the heading of the function
-    pass # Replace this line with your implementation...
-
-
-# Question 3 + Bonus
-def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the heading of the function
-    pass # Replace this line with your implementation...
-
 
 
 if __name__=="__main__":
@@ -187,7 +248,7 @@ if __name__=="__main__":
     #     please confirm?
     # 2. iterate through each observation in y 
     #     most of logic is here
-    #     first line T1[:, i - 1] * state_matrix.T * findVect(symbol_matrix,symbol_cols,y[i]).T
+    #     first line T1[:, i - 1] * state_matrix.T * findVect_adv(symbol_matrix,symbol_cols,y[i]).T
     #         times last states * prob next state given state * emission prob of observed
     #         find max of this for each state // prob of that state
     #         to matrix running probabilities
