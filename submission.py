@@ -129,18 +129,18 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
             logprobs[:,0,i] = 0
         paths[:, 0] = state_cols.index("BEGIN")
         for q in range(1, 2):
-            for x in range(N):
+            for x in range(N-1):
                 queue = []                
                 for y in range(N):
                     #  in itertools.product( range(N-1),range(N)):  #range(1), range(1) ): 
                     # print(logprobs[x,q-1,1])
 
                     for i in range(k):
-                        print("logprob",logprobs[x,q-1,i])
-                        print("state",state_matrix[x,y].T)
-                        print("find",findVect2(symbol_matrix,symbol_cols,query[i]).T)
-                        prob = logprobs[x,q-1,i] + state_matrix[x,y] + findVect2(symbol_matrix,symbol_cols,query[i])
-                        print("prob",prob)
+                        # print("logprob",logprobs[x,q-1,i])
+                        # print("state",state_matrix[x,y].T)
+                        # print("find",findVect2(symbol_matrix,symbol_cols,query[i]).T)
+                        prob = logprobs[x,q-1,i] + state_matrix[x,y].T + findVect2(symbol_matrix,symbol_cols,query[i]).T
+                        # print("prob",prob)
                         for s in range(len(prob)):
                             queue.append((prob[s],s))
                 queue.sort(key=lambda x: x[0], reverse=True)                
