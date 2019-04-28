@@ -63,24 +63,28 @@ def findVect(matrix,symbls, value):
     try: 
         return matrix[:,symbls.index(value)]
     except ValueError:
-        if value.isdigit():
-            return matrix[:,symbls.index('UNK-N')]
-        elif bool(re.match('^[A-Za-z]+$', str)):
-            return matrix[:,symbls.index('UNK-T')]
-        else:
-            return matrix[:,symbls.index('UNK')]
+        return return_unk(matrix,symbls, value)
+
+def return_unk(matrix, symbls, value):
+    if value.isdigit():
+        return matrix[:,symbls.index('UNK-N')]
+    elif bool(re.match('^[A-Za-z]+$', str)):
+        return matrix[:,symbls.index('UNK-T')]
+    return matrix[:,symbls.index('UNK')]
 
 def findVect2(matrix,symbls, value):
+    print(value)
     try: 
         return matrix[np.newaxis, :,symbls.index(value)]
     except ValueError:
-        if value.isdigit():
-            print(value)
-            return matrix[np.newaxis, :,symbls.index('UNK-N')]
-        elif bool(re.match('^[A-Za-z]+$', str)):
-            return matrix[np.newaxis, :,symbls.index('UNK-T')]
-        else:
-            return matrix[np.newaxis, :,symbls.index('UNK')]
+        return return_unk2(matrix, symbls, value)
+
+def return_unk2(matrix, symbls, value):
+    if value.isdigit():
+        return matrix[np.newaxis, :,symbls.index('UNK-N')]
+    elif bool(re.match('^[A-Za-z]+$', str)):
+        return matrix[np.newaxis, :,symbls.index('UNK-T')]
+    return matrix[np.newaxis, :,symbls.index('UNK')]
 
 #helper to find address
 def parseAddress(string):
@@ -110,6 +114,7 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
     out = []
     ppp = True
     for query in queries:
+        print(query)
         N = len(state_cols)
         Q = len(query)
         logprobs    = np.empty((N,Q), 'd')
