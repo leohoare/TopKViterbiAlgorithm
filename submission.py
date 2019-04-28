@@ -27,8 +27,8 @@ def parseSymbolFile(file,N):
     file = open(file)
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
-    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK']
-    out = np.ones((N,col_count+1))
+    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK', 'UNK-N', 'UNK-T']
+    out = np.ones((N,col_count+3))
     for row in lines[(col_count+1):]:
         out[int(row[0]),int(row[1])] = int(row[2])+1
     for index in range(out.shape[0]):
@@ -36,6 +36,9 @@ def parseSymbolFile(file,N):
         prob = lambda t: t/(total)
         func = np.vectorize(prob)
         out[index]  = func(out[index])
+    #print(out[:,-1])
+    out[:,-3][18:] = [0]*8
+    out[:,-2][2] = 0
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
 
@@ -59,6 +62,7 @@ def findVect2(matrix,symbls, value):
     try: 
         return matrix[np.newaxis, :,symbls.index(value)]
     except ValueError:
+        #print(matrix[np.newaxis, :,symbls.index('UNK')])
         return matrix[np.newaxis, :,symbls.index('UNK')]
 
 #helper to find address
@@ -87,6 +91,7 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
     symbol_cols, symbol_matrix = parseSymbolFile(Symbol_File,len(state_cols))
     queries = parseQueryFile(Query_File)
     out = []
+    ppp = True
     for query in queries:
         N = len(state_cols)
         Q = len(query)
@@ -97,6 +102,10 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
         paths[:, 0] = state_cols.index("BEGIN")
         # normal cases
         for i in range(1, Q):
+            if ppp:
+                #print(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T)
+                #print(np.max(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T, 1))
+                ppp = False
             logprobs[:, i] = np.max(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T, 1)
             paths[:, i] = np.argmax(logprobs[:, i - 1] + state_matrix.T, 1)
         # case for end
@@ -108,7 +117,17 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
             path[i - 1] = paths[path[i], i]
         path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1])]
         out.append(path)
-
+    
+    file = open('./dev_set/Query_Label')
+    lines = [[int(el) for el in line.strip().split()] for line in file]
+    
+    count = 0
+    for i in range(len(lines)):
+        if lines[i] != out[i][:-1]:
+            count += np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))
+            print(lines[i], out[i][:-1], queries[i], 'diff = '+ str(np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))), sep = '\n', end = '\n ------------------- -------------------\n')        
+            
+    print('\n\nTOTAL COUNT = ', count)
     return out
 
 # Question 2
@@ -126,6 +145,8 @@ if __name__=="__main__":
     # pass
     # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
     out = viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
+
+
     # '''
     # Unsure of where issues are arising, possibly around dealing with beg / end cases
     # current method:
