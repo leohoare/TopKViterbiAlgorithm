@@ -62,6 +62,11 @@ def findVect2(matrix,symbls, value):
     except ValueError:
         return matrix[np.newaxis, :,symbls.index('UNK')]
 
+def findValue(matrix,symbls, x, y):
+    try: 
+        return matrix[x,symbls.index(y)]
+    except ValueError:
+        return matrix[x,symbls.index('UNK')]
 
 
 #helper to find address
@@ -124,12 +129,13 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
         Q = len(query)
         logprobs    = np.empty((N,Q,k), 'd')
         paths       = np.empty((N,Q,k), 'B')
+        #CHANGE VECTOR FUNCTION
         logprobs[:,0,0] = state_matrix[state_cols.index("BEGIN")] + findVect(symbol_matrix,symbol_cols,query[0])
         for i in range(1,k):
             logprobs[:,0,i] = 0
         paths[:, 0] = state_cols.index("BEGIN")
-        for q in range(1, 2):
-            for x in range(N-1):
+        for q in range(1, Q):
+            for x in range(N):
                 queue = []                
                 for y in range(N):
                     #  in itertools.product( range(N-1),range(N)):  #range(1), range(1) ): 
@@ -139,18 +145,20 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
                         # print("logprob",logprobs[x,q-1,i])
                         # print("state",state_matrix[x,y].T)
                         # print("find",findVect2(symbol_matrix,symbol_cols,query[i]).T)
-                        prob = logprobs[x,q-1,i] + state_matrix[x,y].T + findVect2(symbol_matrix,symbol_cols,query[i]).T
+                        prob = logprobs[x,q-1,i] + state_matrix[x,y].T + findVect2(symbol_matrix,symbol_cols,query[q]).T
                         # print("prob",prob)
                         for s in range(len(prob)):
                             queue.append((prob[s],s))
+                
                 queue.sort(key=lambda x: x[0], reverse=True)                
                 # for i in range(len(queue)):
                 #     if np.isinf(queue[i][0]):
-                #         # queue[i][0][0] = -10000
+                #         queue[i][0][0] = -10000
+                # queue.sort(key=lambda x: x[0], reverse=True)          
                         # print(i[0])
                 # print(queue)
                 # print(queue)
-                # print(queue[:k])
+                print(queue[:k])
                 for i in range(k):
                     logprobs[x,q,i] = queue[i][0]
                     paths[x,q,i]    = queue[i][1]
