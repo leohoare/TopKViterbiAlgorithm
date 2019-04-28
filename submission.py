@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 
 
 ####  File Parsers ####
@@ -38,7 +39,13 @@ def parseSymbolFile(file,N):
         out[index]  = func(out[index])
     #print(out[:,-1])
     out[:,-3][18:] = [0]*8
-    out[:,-2][2] = 0
+    out[:,-2][2:6] = 0
+    out[:,-2][7:9] = 0
+    out[:,-2][10:] = 0
+    out[:,-1][:2] = 0
+    out[:,-1][6] = 0
+    out[:,-1][9] = 0
+
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
 
@@ -56,14 +63,24 @@ def findVect(matrix,symbls, value):
     try: 
         return matrix[:,symbls.index(value)]
     except ValueError:
-        return matrix[:,symbls.index('UNK')]
+        if value.isdigit():
+            return matrix[:,symbls.index('UNK-N')]
+        elif bool(re.match('^[A-Za-z]+$', str)):
+            return matrix[:,symbls.index('UNK-T')]
+        else:
+            return matrix[:,symbls.index('UNK')]
 
 def findVect2(matrix,symbls, value):
     try: 
         return matrix[np.newaxis, :,symbls.index(value)]
     except ValueError:
-        #print(matrix[np.newaxis, :,symbls.index('UNK')])
-        return matrix[np.newaxis, :,symbls.index('UNK')]
+        if value.isdigit():
+            print(value)
+            return matrix[np.newaxis, :,symbls.index('UNK-N')]
+        elif bool(re.match('^[A-Za-z]+$', str)):
+            return matrix[np.newaxis, :,symbls.index('UNK-T')]
+        else:
+            return matrix[np.newaxis, :,symbls.index('UNK')]
 
 #helper to find address
 def parseAddress(string):
