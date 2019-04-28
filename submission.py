@@ -55,7 +55,7 @@ def parseSymbolFile_advanced(file,N):
         prob = lambda t: t/(total)
         func = np.vectorize(prob)
         out[index]  = func(out[index])
-    #print(out[:,-1])
+
     out[:,-3][18:] = [0]*8
     out[:,-2][2:6] = 0
     out[:,-2][7:9] = 0
@@ -110,7 +110,6 @@ def return_unk(matrix, symbls, value):
     return matrix[:,symbls.index('UNK')]
 
 def findVect_adv2(matrix,symbls, value):
-    print(value)
     try: 
         return matrix[np.newaxis, :,symbls.index(value)]
     except ValueError:
@@ -185,7 +184,6 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
     out = []
     ppp = True
     for query in queries:
-        print(query)
         N = len(state_cols)
         Q = len(query)
         logprobs    = np.empty((N,Q), 'd')
@@ -195,10 +193,6 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
         paths[:, 0] = state_cols.index("BEGIN")
         # normal cases
         for i in range(1, Q):
-            if ppp:
-                #print(logprobs[:, i - 1] + state_matrix.T + findVect_adv2(symbol_matrix,symbol_cols,query[i]).T)
-                #print(np.max(logprobs[:, i - 1] + state_matrix.T + findVect_adv2(symbol_matrix,symbol_cols,query[i]).T, 1))
-                ppp = False
             logprobs[:, i] = np.max(logprobs[:, i - 1] + state_matrix.T + findVect_adv2(symbol_matrix,symbol_cols,query[i]).T, 1)
             paths[:, i] = np.argmax(logprobs[:, i - 1] + state_matrix.T, 1)
         # case for end
@@ -227,7 +221,7 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
 if __name__=="__main__":
     # pass
     # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
-    out = viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
+    out = advanced_decoding('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
 
 
     # '''
