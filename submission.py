@@ -63,7 +63,26 @@ def parseSymbolFile_advanced(file,N):
     out[:,-1][:2] = 0
     out[:,-1][6] = 0
     out[:,-1][9] = 0
+    out[:,cols.index('&')][23] = 1  # this seems to work pretty well but still sometimes produces wrong labels 
+    out[:,cols.index(',')][18] = 1
+    out[:,cols.index('/')][19] = 1
+    out[:,cols.index('-')][20] = 1  # including only up to this line gives 122 wrong labels
+    out[:,cols.index('(')][21] = 1  # adding this last two lines gives 118 wrong labels
+    out[:,cols.index(')')][22] = 1  # but the sentences that contain ( and ) are all classified with all 0's
 
+
+    # out[:,cols.index('&')] = [0]*26  # I tried to replace 0 in all the elements except the one 
+    # out[:,cols.index('&')][23] = 1   # with the right state, but this messed up the classification big time
+    # out[:,cols.index(',')] = [0]*26 
+    # out[:,cols.index(',')][18] = 1
+    # out[:,cols.index('/')] = [0]*26 
+    # out[:,cols.index('/')][19] = 1
+    # out[:,cols.index('-')] = [0]*26 
+    # out[:,cols.index('-')][20] = 1
+    # out[:,cols.index('(')] = [0]*26 
+    # out[:,cols.index('(')][21] = 1
+    # out[:,cols.index('(')] = [0]*26 
+    # out[:,cols.index(')')][22] = 1
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
 
@@ -78,13 +97,15 @@ def parseQueryFile(file):
 
 # helper to check if matrix contains value other returns unknown probabilities
 def findVect(matrix,symbls, value):
-    try: 
+    try:
         return matrix[:,symbls.index(value)]
     except ValueError:
         return matrix[:,symbls.index('UNK')]
 
 def findVect2(matrix,symbls, value):
     try: 
+        if value in ['&','(',')']:
+            print(matrix[np.newaxis, :,symbls.index(value)])
         return matrix[np.newaxis, :,symbls.index(value)]
     except ValueError:
         return matrix[np.newaxis, :,symbls.index('UNK')]
@@ -169,6 +190,17 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
             path[i - 1] = paths[path[i], i]
         path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1])]
         out.append(path)
+
+    file = open('./dev_set/Query_Label')
+    lines = [[int(el) for el in line.strip().split()] for line in file]
+    
+    count = 0
+    for i in range(len(lines)):
+        if lines[i] != out[i][:-1]:
+            count += np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))
+            print(lines[i], out[i][:-1], queries[i], 'diff = '+ str(np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))), sep = '\n', end = '\n ------------------- -------------------\n')        
+            
+    print('\n\nTOTAL COUNT = ', count)
     return out
 
 # Question 2
