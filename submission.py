@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import itertools
 import heapq
-
+import time
 ####  File Parsers ####
 
 # parses state file
@@ -126,7 +126,10 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
     symbol_cols, symbol_matrix = parseSymbolFile(Symbol_File,len(state_cols))
     queries = parseQueryFile(Query_File)
     out = []
+    now = time.time()
     for query in queries:
+        print(time.time()-now)
+        now = time.time()
         print(query)
         N = len(state_cols)
         Q = len(query)
@@ -142,7 +145,7 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
                 for y in range(N):
                     for i in range(k):
                         prob = logprobs[y,q-1,i] + state_matrix[y,x] + findValue(symbol_matrix,symbol_cols,x,query[q])
-                        queue.append((prob,y,))
+                        queue.append((prob,y))
                 queue.sort(key=lambda x: x[0], reverse=True)                
                 for i in range(k):
                     logprobs[x,q,i] = queue[i][0]
@@ -156,6 +159,7 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
                 path[i - 1] = paths[path[i], i,K]
             path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1,K])]
             results.append(path)
+        print(results)
         out.append(results)
     return out
 
@@ -169,7 +173,7 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
 if __name__=="__main__":
     # pass
     # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
-    top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2)
+    print(top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2))
     # print(viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
     # '''
     # Unsure of where issues are arising, possibly around dealing with beg / end cases
