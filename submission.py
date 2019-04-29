@@ -125,8 +125,6 @@ def findVect(matrix,symbls, value):
 
 def findVect2(matrix,symbls, value):
     try: 
-        if value in ['&','(',')']:
-            print(matrix[np.newaxis, :,symbls.index(value)])
         return matrix[np.newaxis, :,symbls.index(value)]
     except ValueError:
         return matrix[np.newaxis, :,symbls.index('UNK')]
