@@ -47,29 +47,50 @@ def parseSymbolFile_advanced(file,N):
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
     cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK', 'UNK-N', 'UNK-T']
-    out = np.ones((N,col_count+3))
+    out = np.ones((N,col_count+3))#p.concatenate((np.ones((18,col_count+3)),np.full((8,col_count+3),0.000000000001)))
     for row in lines[(col_count+1):]:
         out[int(row[0]),int(row[1])] = int(row[2])+1
     for index in range(out.shape[0]):
         total = sum(out[index])
+        print(total)
+
         prob = lambda t: t/(total)
         func = np.vectorize(prob)
         out[index]  = func(out[index])
+    
+    K = 1/(44214*1000)
+    out[:,-3][18:] = [K]*8
+    out[:,-2][2:6] = K
+    out[:,-2][7:9] = K
+    out[:,-2][10:] = K
+    out[:,-1][:2] = K
+    out[:,-1][6] = K
+    out[:,-1][9] = K
+    out[:,-1][18:] = [K]*8
 
-    out[:,-3][18:] = [0]*8
-    out[:,-2][2:6] = 0
-    out[:,-2][7:9] = 0
-    out[:,-2][10:] = 0
-    out[:,-1][:2] = 0
-    out[:,-1][6] = 0
-    out[:,-1][9] = 0
-    out[:,cols.index('&')][23] = 1  # this seems to work pretty well but still sometimes produces wrong labels 
-    out[:,cols.index(',')][18] = 1
-    out[:,cols.index('/')][19] = 1
-    out[:,cols.index('-')][20] = 1  # including only up to this line gives 122 wrong labels
-    out[:,cols.index('(')][21] = 1  # adding this last two lines gives 118 wrong labels
-    out[:,cols.index(')')][22] = 1  # but the sentences that contain ( and ) are all classified with all 0's
+    print(out[:,-3], out[:,-2], out[:,-1], sep = '\n.\n')
 
+    out[:,cols.index(',')][:18] = [K]*18
+    out[:,cols.index(',')][19:] = [K]*7
+    out[:,cols.index('/')][:19] = [K]*19 
+    out[:,cols.index('/')][20:] = [K]*6
+    out[:,cols.index('-')][:20] = [K]*20 
+    out[:,cols.index('-')][21:] = [K]*5
+    out[:,cols.index('(')][:21] = [K]*21 
+    out[:,cols.index('(')][22:] = [K]*4
+    out[:,cols.index(')')][:22] = [K]*22 
+    out[:,cols.index(')')][23:] = [K]*3
+    out[:,cols.index('&')][:23] = [K]*23
+    out[:,cols.index('&')][24:] = [K]*2  
+
+   
+
+    print( out[:,cols.index(',')],\
+        out[:,cols.index('/')],\
+            out[:,cols.index('-')],\
+                out[:,cols.index('(')], \
+                    out[:,cols.index(')')], \
+                        out[:,cols.index('&')], sep = '\n|||||\n') 
 
     # out[:,cols.index('&')] = [0]*26  # I tried to replace 0 in all the elements except the one 
     # out[:,cols.index('&')][23] = 1   # with the right state, but this messed up the classification big time
@@ -128,7 +149,8 @@ def return_unk(matrix, symbls, value):
         return matrix[:,symbls.index('UNK-N')]
     elif bool(re.match('^[A-Za-z]+$', value)):
         return matrix[:,symbls.index('UNK-T')]
-    return matrix[:,symbls.index('UNK')]
+    else:
+        return matrix[:,symbls.index('UNK')]
 
 def findVect_adv2(matrix,symbls, value):
     try: 
@@ -137,9 +159,10 @@ def findVect_adv2(matrix,symbls, value):
         return return_unk2(matrix, symbls, value)
 
 def return_unk2(matrix, symbls, value):
+        
     if value.isdigit():
         return matrix[np.newaxis, :,symbls.index('UNK-N')]
-    elif bool(re.match('^[A-Za-z]+$', value)):
+    if bool(re.match('^[A-Za-z]+$', value)):
         return matrix[np.newaxis, :,symbls.index('UNK-T')]
     return matrix[np.newaxis, :,symbls.index('UNK')]
 
@@ -282,3 +305,18 @@ if __name__=="__main__":
     #         similar
     #         last states probs * next states -> array of N by N, then for each N find max prob index.
     # 3. first find argmax of last state 
+
+
+"""     print( out[:,cols.index(',')],\
+        out[:,cols.index('/')],\
+            out[:,cols.index('-')],\
+                out[:,cols.index('(')], \
+                    out[:,cols.index(')')], \
+                        out[:,cols.index('&')], sep = '\n|||||\n') 
+    out[:,cols.index('&')][23] = 1  # this seems to work pretty well but still sometimes produces wrong labels 
+    out[:,cols.index(',')][18] = 1
+    out[:,cols.index('/')][19] = 1
+    out[:,cols.index('-')][20] = 1  # including only up to this line gives 122 wrong labels
+    out[:,cols.index('(')][21] = 1  # adding this last two lines gives 118 wrong labels
+    out[:,cols.index(')')][22] = 1  # but the sentences that contain ( and ) are all classified with all 0's
+"""
