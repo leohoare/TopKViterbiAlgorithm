@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
-import itertools
-import heapq
-import time
+import re
+
+
 ####  File Parsers ####
 
 # parses state file
@@ -28,8 +28,8 @@ def parseSymbolFile(file,N):
     file = open(file)
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
-    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK']
-    out = np.ones((N,col_count+1))
+    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK', 'UNK-N', 'UNK-T']
+    out = np.ones((N,col_count+3))
     for row in lines[(col_count+1):]:
         out[int(row[0]),int(row[1])] = int(row[2])+1
     for index in range(out.shape[0]):
@@ -37,6 +37,15 @@ def parseSymbolFile(file,N):
         prob = lambda t: t/(total)
         func = np.vectorize(prob)
         out[index]  = func(out[index])
+    #print(out[:,-1])
+    out[:,-3][18:] = [0]*8
+    out[:,-2][2:6] = 0
+    out[:,-2][7:9] = 0
+    out[:,-2][10:] = 0
+    out[:,-1][:2] = 0
+    out[:,-1][6] = 0
+    out[:,-1][9] = 0
+
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
 
@@ -54,13 +63,28 @@ def findVect(matrix,symbls, value):
     try: 
         return matrix[:,symbls.index(value)]
     except ValueError:
-        return matrix[:,symbls.index('UNK')]
+        return return_unk(matrix,symbls, value)
+
+def return_unk(matrix, symbls, value):
+    if value.isdigit():
+        return matrix[:,symbls.index('UNK-N')]
+    elif bool(re.match('^[A-Za-z]+$', value)):
+        return matrix[:,symbls.index('UNK-T')]
+    return matrix[:,symbls.index('UNK')]
 
 def findVect2(matrix,symbls, value):
+    print(value)
     try: 
         return matrix[np.newaxis, :,symbls.index(value)]
     except ValueError:
-        return matrix[np.newaxis, :,symbls.index('UNK')]
+        return return_unk2(matrix, symbls, value)
+
+def return_unk2(matrix, symbls, value):
+    if value.isdigit():
+        return matrix[np.newaxis, :,symbls.index('UNK-N')]
+    elif bool(re.match('^[A-Za-z]+$', value)):
+        return matrix[np.newaxis, :,symbls.index('UNK-T')]
+    return matrix[np.newaxis, :,symbls.index('UNK')]
 
 def findValue(matrix,symbls, x, y):
     try: 
@@ -96,7 +120,9 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
     symbol_cols, symbol_matrix = parseSymbolFile(Symbol_File,len(state_cols))
     queries = parseQueryFile(Query_File)
     out = []
+    ppp = True
     for query in queries:
+        print(query)
         N = len(state_cols)
         Q = len(query)
         logprobs    = np.empty((N,Q), 'd')
@@ -106,6 +132,10 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
         paths[:, 0] = state_cols.index("BEGIN")
         # normal cases
         for i in range(1, Q):
+            if ppp:
+                #print(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T)
+                #print(np.max(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T, 1))
+                ppp = False
             logprobs[:, i] = np.max(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T, 1)
             paths[:, i] = np.argmax(logprobs[:, i - 1] + state_matrix.T, 1)
         # case for end
@@ -173,8 +203,9 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
 if __name__=="__main__":
     # pass
     # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
-    print(top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2))
-    # print(viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
+    out = viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
+
+
     # '''
     # Unsure of where issues are arising, possibly around dealing with beg / end cases
     # current method:
