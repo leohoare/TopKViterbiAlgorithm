@@ -54,12 +54,14 @@ def findVect(matrix,symbls, value):
     try: 
         return matrix[:,symbls.index(value)]
     except ValueError:
+        print('here')
         return matrix[:,symbls.index('UNK')]
 
 def findVect2(matrix,symbls, value):
     try: 
         return matrix[np.newaxis, :,symbls.index(value)]
     except ValueError:
+        print('here')
         return matrix[np.newaxis, :,symbls.index('UNK')]
 
 def findValue(matrix,symbls, x, y):
@@ -67,6 +69,7 @@ def findValue(matrix,symbls, x, y):
         return matrix[x,symbls.index(y)]
     except ValueError:
         return matrix[x,symbls.index('UNK')]
+
 
 
 #helper to find address
@@ -95,7 +98,7 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
     symbol_cols, symbol_matrix = parseSymbolFile(Symbol_File,len(state_cols))
     queries = parseQueryFile(Query_File)
     out = []
-    for query in queries:
+    for query in queries[0:1]:
         N = len(state_cols)
         Q = len(query)
         logprobs    = np.empty((N,Q), 'd')
@@ -107,6 +110,7 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
         for i in range(1, Q):
             logprobs[:, i] = np.max(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T, 1)
             paths[:, i] = np.argmax(logprobs[:, i - 1] + state_matrix.T, 1)
+        print(logprobs)
         # case for end
         logprobs[:,Q-1] = np.max(logprobs[:, Q-2] + state_matrix.T)
         # build path
@@ -115,6 +119,8 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
         for i in reversed(range(1, Q)):
             path[i - 1] = paths[path[i], i]
         path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1])]
+        # print(paths)
+        print(logprobs)
         out.append(path)
     return out
 
@@ -123,7 +129,7 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
     state_cols, state_matrix = parseStateFile(State_File)
     symbol_cols, symbol_matrix = parseSymbolFile(Symbol_File,len(state_cols))
     queries = parseQueryFile(Query_File)
-    print(state_matrix)
+    print(state_matrix[1,:].T)
     for query in queries[0:1]:
         N = len(state_cols)
         Q = len(query)
@@ -132,25 +138,29 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
         #CHANGE VECTOR FUNCTION
         logprobs[:,0,0] = state_matrix[state_cols.index("BEGIN")] + findVect(symbol_matrix,symbol_cols,query[0])
         for i in range(1,k):
-            logprobs[:,0,i] = 0
+            logprobs[:,0,i] = -1000
         paths[:, 0] = state_cols.index("BEGIN")
         for q in range(1, Q):
+            # print(query[q])
             for x in range(N):
-                queue = []                
+                queue = []    
+                         
                 for y in range(N):
                     #  in itertools.product( range(N-1),range(N)):  #range(1), range(1) ): 
                     # print(logprobs[x,q-1,1])
 
                     for i in range(k):
-                        # print("logprob",logprobs[x,q-1,i])
-                        # print("state",state_matrix[x,y].T)
-                        # print("find",findVect2(symbol_matrix,symbol_cols,query[i]).T)
-                        prob = logprobs[x,q-1,i] + state_matrix[x,y].T + findVect2(symbol_matrix,symbol_cols,query[q]).T
-                        # print("prob",prob)
-                        for s in range(len(prob)):
-                            queue.append((prob[s],s))
-                
+                        # ISSUE HERE around findvect term
+                        # 1 x 1 x array?
+                        prob = logprobs[y,q-1,i] + state_matrix[y,x] + findValue(symbol_matrix,symbol_cols,x,query[q])
+
+                        queue.append((prob,y,))
+                        # for s in range(len(prob)):
+                        #     queue.append((prob[s],s))
+                # print(queue)
                 queue.sort(key=lambda x: x[0], reverse=True)                
+                # print(queue)
+                # print()
                 # for i in range(len(queue)):
                 #     if np.isinf(queue[i][0]):
                 #         queue[i][0][0] = -10000
@@ -158,15 +168,18 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
                         # print(i[0])
                 # print(queue)
                 # print(queue)
-                print(queue[:k])
+                # print(queue[:k])
                 for i in range(k):
                     logprobs[x,q,i] = queue[i][0]
                     paths[x,q,i]    = queue[i][1]
                 
-        print(logprobs[:,:,0])
-        print(logprobs[:,:,1])
-        print(paths[:,:,0])
-        print(paths[:,:,1])
+        # print(logprobs[:,:,0])
+        # print(logprobs[:,:,1])
+        for i in range(k):
+            print(logprobs[:,:,i])
+            print(paths[:,:,i])
+        # print(paths[:,:,0])
+        # print(paths[:,:,1])
 
                 
                         # heapq.heappush(queue, (prob[s],s)
@@ -195,8 +208,8 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
 if __name__=="__main__":
     # pass
     # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
-    top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2)
-    # out = viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
+    # top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',1)
+    print(viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
     # '''
     # Unsure of where issues are arising, possibly around dealing with beg / end cases
     # current method:
