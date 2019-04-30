@@ -28,15 +28,16 @@ def parseSymbolFile(file,N):
     file = open(file)
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
-    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK']
-    out = np.ones((N,col_count+1))
-    for row in lines[(col_count+1):]:
+    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK', 'UNK-N', 'UNK-T']
+    out = np.full((N,col_count+3), 1.)
+    for row in lines[(col_count+3):]:
         out[int(row[0]),int(row[1])] = int(row[2])+1
     for index in range(out.shape[0]):
         total = sum(out[index])
         prob = lambda t: t/(total)
         func = np.vectorize(prob)
         out[index]  = func(out[index])
+
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
 
@@ -47,9 +48,11 @@ def parseSymbolFile_advanced(file,N):
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
     cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK', 'UNK-N', 'UNK-T']
-    out = np.ones((N,col_count+3))#p.concatenate((np.ones((18,col_count+3)),np.full((8,col_count+3),0.000000000001)))
+    K = 1/(44214*1000)
+
+    out = np.ones((N,col_count+3)) # np.concatenate((np.ones((18,col_count+3)),np.full((8,col_count+3),K))) #
     for row in lines[(col_count+1):]:
-        out[int(row[0]),int(row[1])] = int(row[2])+1
+        out[int(row[0]),int(row[1])] = int(row[2]) + 1
     for index in range(out.shape[0]):
         total = sum(out[index])
         print(total)
@@ -58,7 +61,6 @@ def parseSymbolFile_advanced(file,N):
         func = np.vectorize(prob)
         out[index]  = func(out[index])
     
-    K = 1/(44214*1000)
     out[:,-3][18:] = [K]*8
     out[:,-2][2:6] = K
     out[:,-2][7:9] = K
@@ -68,7 +70,7 @@ def parseSymbolFile_advanced(file,N):
     out[:,-1][9] = K
     out[:,-1][18:] = [K]*8
 
-    print(out[:,-3], out[:,-2], out[:,-1], sep = '\n.\n')
+    #print(out[:,-3], out[:,-2], out[:,-1], sep = '\n.\n')
 
     out[:,cols.index(',')][:18] = [K]*18
     out[:,cols.index(',')][19:] = [K]*7
@@ -85,12 +87,12 @@ def parseSymbolFile_advanced(file,N):
 
    
 
-    print( out[:,cols.index(',')],\
-        out[:,cols.index('/')],\
-            out[:,cols.index('-')],\
-                out[:,cols.index('(')], \
-                    out[:,cols.index(')')], \
-                        out[:,cols.index('&')], sep = '\n|||||\n') 
+    # print( out[:,cols.index(',')],\
+    #     out[:,cols.index('/')],\
+    #         out[:,cols.index('-')],\
+    #             out[:,cols.index('(')], \
+    #                 out[:,cols.index(')')], \
+    #                     out[:,cols.index('&')], sep = '\n|||||\n') 
 
     # out[:,cols.index('&')] = [0]*26  # I tried to replace 0 in all the elements except the one 
     # out[:,cols.index('&')][23] = 1   # with the right state, but this messed up the classification big time
@@ -143,7 +145,7 @@ def findVect_adv(matrix,symbls, value):
         return return_unk(matrix,symbls, value)
 
 def return_unk(matrix, symbls, value):
-    if value.isdigit():
+    if bool(re.match('[0-9]+$', value)):
         return matrix[:,symbls.index('UNK-N')]
     elif bool(re.match('^[A-Za-z]+$', value)):
         return matrix[:,symbls.index('UNK-T')]
@@ -158,7 +160,7 @@ def findVect_adv2(matrix,symbls, value):
 
 def return_unk2(matrix, symbls, value):
         
-    if value.isdigit():
+    if bool(re.match('[0-9]+$', value)):
         return matrix[np.newaxis, :,symbls.index('UNK-N')]
     if bool(re.match('^[A-Za-z]+$', value)):
         return matrix[np.newaxis, :,symbls.index('UNK-T')]
