@@ -55,8 +55,6 @@ def parseSymbolFile_advanced(file,N):
         out[int(row[0]),int(row[1])] = int(row[2]) + 1
     for index in range(out.shape[0]):
         total = sum(out[index])
-        print(total)
-
         prob = lambda t: t/(total)
         func = np.vectorize(prob)
         out[index]  = func(out[index])
@@ -69,9 +67,6 @@ def parseSymbolFile_advanced(file,N):
     out[:,-1][6] = K
     out[:,-1][9] = K
     out[:,-1][18:] = [K]*8
-
-    #print(out[:,-3], out[:,-2], out[:,-1], sep = '\n.\n')
-
     out[:,cols.index(',')][:18] = [K]*18
     out[:,cols.index(',')][19:] = [K]*7
     out[:,cols.index('/')][:19] = [K]*19 
@@ -85,14 +80,6 @@ def parseSymbolFile_advanced(file,N):
     out[:,cols.index('&')][:23] = [K]*23
     out[:,cols.index('&')][24:] = [K]*2  
 
-   
-
-    # print( out[:,cols.index(',')],\
-    #     out[:,cols.index('/')],\
-    #         out[:,cols.index('-')],\
-    #             out[:,cols.index('(')], \
-    #                 out[:,cols.index(')')], \
-    #                     out[:,cols.index('&')], sep = '\n|||||\n') 
 
     # out[:,cols.index('&')] = [0]*26  # I tried to replace 0 in all the elements except the one 
     # out[:,cols.index('&')][23] = 1   # with the right state, but this messed up the classification big time
@@ -166,6 +153,14 @@ def return_unk2(matrix, symbls, value):
         return matrix[np.newaxis, :,symbls.index('UNK-T')]
     return matrix[np.newaxis, :,symbls.index('UNK')]
 
+def findValue(matrix,symbls, x, y):
+    try: 
+        return matrix[x,symbls.index(y)]
+    except ValueError:
+        return matrix[x,symbls.index('UNK')]
+
+
+
 #helper to find address
 def parseAddress(string):
     out = []
@@ -212,23 +207,48 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
         for i in reversed(range(1, Q)):
             path[i - 1] = paths[path[i], i]
         path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1])]
+        # print(paths)
         out.append(path)
-
-    file = open('./dev_set/Query_Label')
-    lines = [[int(el) for el in line.strip().split()] for line in file]
-    
-    count = 0
-    for i in range(len(lines)):
-        if lines[i] != out[i][:-1]:
-            count += np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))
-            print(lines[i], out[i][:-1], queries[i], 'diff = '+ str(np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))), sep = '\n', end = '\n ------------------- -------------------\n')        
-            
-    print('\n\nTOTAL COUNT = ', count)
     return out
 
 # Question 2
 def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the heading of the function
-    pass # Replace this line with your implementation...
+    state_cols, state_matrix = parseStateFile(State_File)
+    symbol_cols, symbol_matrix = parseSymbolFile(Symbol_File,len(state_cols))
+    queries = parseQueryFile(Query_File)
+    out = []
+    for query in queries:
+        N = len(state_cols)
+        Q = len(query)
+        logprobs    = np.empty((N,Q,k), 'd')
+        paths       = np.empty((N,Q,k), 'B')
+        logprobs[:,0,0] = state_matrix[state_cols.index("BEGIN")] + findVect(symbol_matrix,symbol_cols,query[0])
+        for i in range(1,k):
+            logprobs[:,0,i] = -1000
+        paths[:, 0] = state_cols.index("BEGIN")
+        for q in range(1, Q):
+            for x in range(N):
+                queue = []    
+                for y in range(N):
+                    for i in range(k):
+                        prob = logprobs[y,q-1,i] + state_matrix[y,x] + findValue(symbol_matrix,symbol_cols,x,query[q])
+                        queue.append((prob,y))
+                queue.sort(key=lambda x: x[0], reverse=True)                
+                for i in range(k):
+                    logprobs[x,q,i] = queue[i][0]
+                    paths[x,q,i]    = queue[i][1]
+        results = []
+        for K in range(k):
+            logprobs[:,Q-1,K] = np.max(logprobs[:, Q-2,K] + state_matrix.T)
+            path = [0 for _ in range(Q)]
+            path[-1] = state_cols.index("END")
+            for i in reversed(range(1, Q)):
+                path[i - 1] = paths[path[i], i,K]
+            path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1,K])]
+            results.append(path)
+        # print(results)
+        out.append(results)
+    return out
 
 
 # Question 3 + Bonus
@@ -259,24 +279,17 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
             path[i - 1] = paths[path[i], i]
         path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1])]
         out.append(path)
-    
-    file = open('./dev_set/Query_Label')
-    lines = [[int(el) for el in line.strip().split()] for line in file]
-    
-    count = 0
-    for i in range(len(lines)):
-        if lines[i] != out[i][:-1]:
-            count += np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))
-            print(lines[i], out[i][:-1], queries[i], 'diff = '+ str(np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))), sep = '\n', end = '\n ------------------- -------------------\n')        
-            
-    print('\n\nTOTAL COUNT = ', count)
+
     return out
 
 
-if __name__=="__main__":
+# if __name__=="__main__":
     # pass
     # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
-    out = advanced_decoding('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
+    # print(advanced_decoding('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
+    # print(viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
+    # print(top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2))
+    
 
 
     # '''
