@@ -116,6 +116,12 @@ def findVect2(matrix,symbls, value):
     except ValueError:
         return matrix[np.newaxis, :,symbls.index('UNK')]
 
+# def findVect3(matrix,symbls, value):
+#     try: 
+#         return matrix[symbls.index(value), :]
+#     except ValueError:
+#         return matrix[symbls.index('UNK'), :]
+
 def findValue(matrix,symbls, x, y):
     try: 
         return matrix[x,symbls.index(y)]
@@ -157,8 +163,6 @@ def findValue(matrix,symbls, x, y):
     except ValueError:
         return matrix[x,symbls.index('UNK')]
 
-
-
 #helper to find address
 def parseAddress(string):
     out = []
@@ -176,8 +180,6 @@ def parseAddress(string):
         out.append(running)
     out.append('END')
     return out
-
-
 
 # Question 1
 def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the heading of the function
@@ -216,38 +218,40 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
     queries = parseQueryFile(Query_File)
     out = []
     for query in queries:
+        print(query)
         N = len(state_cols)
         Q = len(query)
         logprobs    = np.empty((N,Q,k), 'd')
         paths       = np.empty((N,Q,k), 'B')
+        fromstate   = np.empty((N,Q,k), 'B')
         logprobs[:,0,0] = state_matrix[state_cols.index("BEGIN")] + findVect(symbol_matrix,symbol_cols,query[0])
         for i in range(1,k):
             logprobs[:,0,i] = -1000
         paths[:, 0] = state_cols.index("BEGIN")
         for q in range(1, Q):
             for x in range(N):
-                queue = []    
-                for y in range(N):
-                    for i in range(k):
-                        prob = logprobs[y,q-1,i] + state_matrix[y,x] + findValue(symbol_matrix,symbol_cols,x,query[q])
-                        queue.append((prob,y))
-                queue.sort(key=lambda x: x[0], reverse=True)                
                 for i in range(k):
-                    logprobs[x,q,i] = queue[i][0]
-                    paths[x,q,i]    = queue[i][1]
-        results = []
+                    if i == 0:
+                        prob = logprobs[:,q-1,i] + state_matrix[:,x] + findValue(symbol_matrix,symbol_cols,x,query[q])
+                    else:
+                        prob = np.append(prob,logprobs[:,q-1,i] + state_matrix[:,x] + findValue(symbol_matrix,symbol_cols,x,query[q]))
+                most_like = prob.argsort()
+                final = []
+                for i in range(k):
+                    logprobs[x,q,i] = prob[most_like[-i-1]] 
+                    paths[x,q,i]    = most_like[-i-1]%N
+                    fromstate[x,q,i] = most_like[-i-1]//N
         for K in range(k):
             logprobs[:,Q-1,K] = np.max(logprobs[:, Q-2,K] + state_matrix.T)
             path = [0 for _ in range(Q)]
             path[-1] = state_cols.index("END")
+            statePath=K
             for i in reversed(range(1, Q)):
-                path[i - 1] = paths[path[i], i,K]
+                path[i - 1] = paths[path[i], i, statePath]
+                statePath = fromstate[path[i],i,statePath]
             path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1,K])]
-            results.append(path)
-        # print(results)
-        out.append(results)
+            out.append(path)
     return out
-
 
 # Question 3 + Bonus
 def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the heading of the function
@@ -281,14 +285,14 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
     return out
 
 
-# if __name__=="__main__":
+if __name__=="__main__":
     # pass
     # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
     # print(advanced_decoding('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
     # print(viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
-    # print(top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2))
-    
-
+    a = top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2)
+    for row in a:
+        print(row)
 
     # '''
     # Unsure of where issues are arising, possibly around dealing with beg / end cases
