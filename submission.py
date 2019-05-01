@@ -22,7 +22,7 @@ def parseStateFile(file):
         data[i] = list(map(lambda x:x/total if x!=0 else 0, data[i]))
     with np.errstate(divide='ignore'):
         return cols, np.log(data)
-      
+
 # parses symbol file  
 def parseSymbolFile(file,N):
     file = open(file)
@@ -40,6 +40,37 @@ def parseSymbolFile(file,N):
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
 
+        # parses state file with kneser-ney smoothing
+def parseStateFile_advanced(file):
+    file = open(file)
+    lines = [line.strip().split() for line in file]
+    col_count = int(lines[0][0])
+    cols = [lines[i][0] for i in range(1, col_count+1)]
+    data = np.zeros((col_count, col_count))
+    data[:, cols.index('BEGIN')] = 0
+    data[cols.index('END')] = 0
+    for i in range(col_count+1, len(lines)):
+        x,y,score = lines[i]
+        data[int(x)][int(y)] = int(score)
+    tot_transitions = len(lines) - col_count
+    #print(tot_transitions)
+    delta = 0.75
+    out = np.zeros((col_count, col_count))
+    for i in range(col_count-1):
+        total = sum(data[i])
+        transitions = sum(data[i] != 0)
+        for j in range(len(data)):
+            follow_prob = sum(data[:][j] != 0)
+            if data[i][j]:
+                out[i][j] = (data[i][j]-delta)/total + (delta*transitions/total)*(follow_prob/tot_transitions) 
+            else:
+                out[i][j] = (delta*transitions/total)*(follow_prob/tot_transitions) 
+    
+    with np.errstate(divide='ignore'):
+        return cols, np.log(out)
+      
+
+
 
 # parses symbol file, with different probabilities for different kind
 # of UNK symbols
@@ -48,43 +79,26 @@ def parseSymbolFile_advanced(file,N):
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
     cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK']
-    K = 1/(44214)
+    data =  np.zeros((N,col_count+1)) 
+    out =  np.zeros((N,col_count+1)) 
 
-    out =  np.concatenate((np.ones((18,col_count+1)),np.full((8,col_count+1),K))) #np.ones((N,col_count+1)) #
     for row in lines[(col_count+1):]:
-        out[int(row[0]),int(row[1])] = int(row[2]) + 1
+        data[int(row[0]),int(row[1])] = int(row[2])
     
-    out[:,-1][18:] = [K]*8
-    # out[:,-2][2:6] = K
-    # out[:,-2][7:9] = K
-    # out[:,-2][10:] = K
-    # out[:,-1][:2] = K
-    # out[:,-1][6] = K
-    # out[:,-1][9] = K
-    # out[:,-1][18:] = [K]*8
+    tot_transitions = len(lines[(col_count+1):])
+    delta = .9
+    follow_prob = [sum(data[i] != 0) for i in range(out.shape[0])]
+    for i in range(col_count):
+        total = sum(data[:,i])
+        transitions = sum(data[:,i] != 0)
+        for j in range(out.shape[0]):
+            #cprint(j,i)
 
-    #print(out[:,-3], out[:,-2], out[:,-1], sep = '\n.\n')
-
-    out[:,cols.index(',')][:18] = [K]*18
-    out[:,cols.index(',')][19:] = [K]*7
-    out[:,cols.index('/')][:19] = [K]*19 
-    out[:,cols.index('/')][20:] = [K]*6
-    out[:,cols.index('-')][:20] = [K]*20 
-    out[:,cols.index('-')][21:] = [K]*5
-    out[:,cols.index('(')][:21] = [K]*21 
-    out[:,cols.index('(')][22:] = [K]*4
-    out[:,cols.index(')')][:22] = [K]*22 
-    out[:,cols.index(')')][23:] = [K]*3
-    out[:,cols.index('&')][:23] = [K]*23
-    out[:,cols.index('&')][24:] = [K]*2  
-
-
-    for index in range(out.shape[0]):
-        total = sum(out[index])
-        prob = lambda t: t/(total)
-        func = np.vectorize(prob)
-        out[index]  = func(out[index])
-    
+            if data[j][i]:
+                out[j][i] = (data[j][i]-delta)/total + (delta*transitions/total)*(follow_prob[j]/tot_transitions) 
+            else:
+                out[j][i] = (delta*transitions/total)*(follow_prob[j]/tot_transitions) 
+    print(out[:][:10])
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
 
@@ -116,34 +130,7 @@ def findValue(matrix,symbls, x, y):
     except ValueError:
         return matrix[x,symbls.index('UNK')]
 
-#Helpers for advanced decoding
-def findVect_adv(matrix,symbls, value):
-    try: 
-        return matrix[:,symbls.index(value)]
-    except ValueError:
-        return return_unk(matrix,symbls, value)
 
-def return_unk(matrix, symbls, value):
-    if bool(re.match('[0-9]+$', value)):
-        return matrix[:,symbls.index('UNK-N')]
-    elif bool(re.match('^[A-Za-z]+$', value)):
-        return matrix[:,symbls.index('UNK-T')]
-    else:
-        return matrix[:,symbls.index('UNK')]
-
-def findVect_adv2(matrix,symbls, value):
-    try: 
-        return matrix[np.newaxis, :,symbls.index(value)]
-    except ValueError:
-        return return_unk2(matrix, symbls, value)
-
-def return_unk2(matrix, symbls, value):
-        
-    if bool(re.match('[0-9]+$', value)):
-        return matrix[np.newaxis, :,symbls.index('UNK-N')]
-    if bool(re.match('^[A-Za-z]+$', value)):
-        return matrix[np.newaxis, :,symbls.index('UNK-T')]
-    return matrix[np.newaxis, :,symbls.index('UNK')]
 
 #helper to find address
 def parseAddress(string):
@@ -242,8 +229,7 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
 
 # Question 3 + Bonus
 def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the heading of the function
-    state_cols, state_matrix = parseStateFile(State_File)
-    state_matrix[24][9] = state_matrix[24][0]
+    state_cols, state_matrix = parseStateFile_advanced(State_File)
     symbol_cols, symbol_matrix = parseSymbolFile_advanced(Symbol_File,len(state_cols))
     queries = parseQueryFile(Query_File)
     out = []
@@ -281,7 +267,8 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
             count += np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))
             print(lines[i], out[i][:-1], queries[i], 'diff = '+ str(np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))), sep = '\n', end = '\n ------------------- -------------------\n')        
             
-    print('\n\nTOTAL COUNT = ', count)
+    print('\n\nTOTAL COUNT = ', count)       
+            
     return out
 
 
@@ -291,6 +278,7 @@ if __name__=="__main__":
     # out3 = viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
     # out1 = top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2)
     out = advanced_decoding('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
+
 
 
     # '''
