@@ -20,7 +20,6 @@ def parseStateFile(file):
     for i in range(len(data)):
         total = sum(data[i])
         data[i] = list(map(lambda x:x/total if x!=0 else 0, data[i]))
-        # print(data[i])
     with np.errstate(divide='ignore'):
         return cols, np.log(data)
       
@@ -29,18 +28,18 @@ def parseSymbolFile(file,N):
     file = open(file)
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
-    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK', 'UNK-N', 'UNK-T']
-    out = np.full((N,col_count+3), 1.)
-    for row in lines[(col_count+3):]:
+    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK']
+    out = np.ones((N,col_count+1))
+    for row in lines[(col_count+1):]:
         out[int(row[0]),int(row[1])] = int(row[2])+1
     for index in range(out.shape[0]):
         total = sum(out[index])
         prob = lambda t: t/(total)
         func = np.vectorize(prob)
         out[index]  = func(out[index])
-
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
+
 
 # parses symbol file, with different probabilities for different kind
 # of UNK symbols
@@ -278,7 +277,7 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
         # normal cases
         for i in range(1, Q):
             logprobs[:, i] = np.max(logprobs[:, i - 1] + state_matrix.T + findVect2(symbol_matrix,symbol_cols,query[i]).T, 1)
-            #print('\n\n\n', logprobs[:,i], '\n', state_matrix[state_cols.index("BEGIN")], findVect(symbol_matrix,symbol_cols,query[0]), '\n\n\n')
+            #print('\n\n\n', logprobs[:,i], '\n', state_matrix.T, '\n', findVect2(symbol_matrix,symbol_cols,query[i]).T, '\n\n\n')
 
             paths[:, i] = np.argmax(logprobs[:, i - 1] + state_matrix.T, 1)
         # case for end
@@ -291,25 +290,25 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
         path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1])]
         out.append(path)
     
-    # file = open('./dev_set/Query_Label')
-    # lines = [[int(el) for el in line.strip().split()] for line in file]
+    file = open('./dev_set/Query_Label')
+    lines = [[int(el) for el in line.strip().split()] for line in file]
     
-    # count = 0
-    # for i in range(len(lines)):
-    #     if lines[i] != out[i][:-1]:
-    #         count += np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))
-    #         print(lines[i], out[i][:-1], queries[i], 'diff = '+ str(np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))), sep = '\n', end = '\n ------------------- -------------------\n')        
+    count = 0
+    for i in range(len(lines)):
+        if lines[i] != out[i][:-1]:
+            count += np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))
+            print(lines[i], out[i][:-1], queries[i], 'diff = '+ str(np.count_nonzero(np.array(lines[i]) != np.array(out[i][:-1]))), sep = '\n', end = '\n ------------------- -------------------\n')        
             
-    # print('\n\nTOTAL COUNT = ', count)
+    print('\n\nTOTAL COUNT = ', count)
     return out
 
 
-#if __name__=="__main__":
+if __name__=="__main__":
     # pass
     # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
     # out3 = viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
     # out1 = top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2)
-    # out = advanced_decoding('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
+    out = advanced_decoding('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File')
 
 
     # '''
