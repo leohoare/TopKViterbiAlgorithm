@@ -47,26 +47,21 @@ def parseSymbolFile_advanced(file,N):
     file = open(file)
     lines = [line.strip().split() for line in file]
     col_count = int(lines[0][0])
-    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK', 'UNK-N', 'UNK-T']
-    K = 1/(44214*1000)
+    cols = [lines[i][0] for i in range(1, col_count+1)]+['UNK']
+    K = 1/(44214)
 
-    out = np.ones((N,col_count+3)) # np.concatenate((np.ones((18,col_count+3)),np.full((8,col_count+3),K))) #
+    out =  np.concatenate((np.ones((18,col_count+1)),np.full((8,col_count+1),K))) #np.ones((N,col_count+1)) #
     for row in lines[(col_count+1):]:
         out[int(row[0]),int(row[1])] = int(row[2]) + 1
-    for index in range(out.shape[0]):
-        total = sum(out[index])
-        prob = lambda t: t/(total)
-        func = np.vectorize(prob)
-        out[index]  = func(out[index])
     
-    out[:,-3][18:] = [K]*8
-    out[:,-2][2:6] = K
-    out[:,-2][7:9] = K
-    out[:,-2][10:] = K
-    out[:,-1][:2] = K
-    out[:,-1][6] = K
-    out[:,-1][9] = K
     out[:,-1][18:] = [K]*8
+    # out[:,-2][2:6] = K
+    # out[:,-2][7:9] = K
+    # out[:,-2][10:] = K
+    # out[:,-1][:2] = K
+    # out[:,-1][6] = K
+    # out[:,-1][9] = K
+    # out[:,-1][18:] = [K]*8
 
     #print(out[:,-3], out[:,-2], out[:,-1], sep = '\n.\n')
 
@@ -83,27 +78,13 @@ def parseSymbolFile_advanced(file,N):
     out[:,cols.index('&')][:23] = [K]*23
     out[:,cols.index('&')][24:] = [K]*2  
 
-   
 
-    # print( out[:,cols.index(',')],\
-    #     out[:,cols.index('/')],\
-    #         out[:,cols.index('-')],\
-    #             out[:,cols.index('(')], \
-    #                 out[:,cols.index(')')], \
-    #                     out[:,cols.index('&')], sep = '\n|||||\n') 
-
-    # out[:,cols.index('&')] = [0]*26  # I tried to replace 0 in all the elements except the one 
-    # out[:,cols.index('&')][23] = 1   # with the right state, but this messed up the classification big time
-    # out[:,cols.index(',')] = [0]*26 
-    # out[:,cols.index(',')][18] = 1
-    # out[:,cols.index('/')] = [0]*26 
-    # out[:,cols.index('/')][19] = 1
-    # out[:,cols.index('-')] = [0]*26 
-    # out[:,cols.index('-')][20] = 1
-    # out[:,cols.index('(')] = [0]*26 
-    # out[:,cols.index('(')][21] = 1
-    # out[:,cols.index('(')] = [0]*26 
-    # out[:,cols.index(')')][22] = 1
+    for index in range(out.shape[0]):
+        total = sum(out[index])
+        prob = lambda t: t/(total)
+        func = np.vectorize(prob)
+        out[index]  = func(out[index])
+    
     with np.errstate(divide='ignore'):
         return cols, np.log(out)
 
@@ -271,7 +252,7 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
         logprobs    = np.empty((N,Q), 'd')
         paths       = np.empty((N,Q), 'B')
         # special case for begin
-        logprobs[:, 0] = state_matrix[state_cols.index("BEGIN")] +  findVect_adv(symbol_matrix,symbol_cols,query[0])
+        logprobs[:, 0] = state_matrix[state_cols.index("BEGIN")] +  findVect(symbol_matrix,symbol_cols,query[0])
 
         paths[:, 0] = state_cols.index("BEGIN")
         # normal cases
