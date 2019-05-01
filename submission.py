@@ -207,7 +207,6 @@ def viterbi_algorithm(State_File, Symbol_File, Query_File): # do not change the 
         for i in reversed(range(1, Q)):
             path[i - 1] = paths[path[i], i]
         path = [state_cols.index("BEGIN")] + path + [np.max(logprobs[:,Q-1])]
-        # print(paths)
         out.append(path)
     return out
 
@@ -218,7 +217,6 @@ def top_k_viterbi(State_File, Symbol_File, Query_File, k): # do not change the h
     queries = parseQueryFile(Query_File)
     out = []
     for query in queries:
-        print(query)
         N = len(state_cols)
         Q = len(query)
         logprobs    = np.empty((N,Q,k), 'd')
@@ -285,53 +283,10 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
     return out
 
 
-if __name__=="__main__":
+# if __name__=="__main__":
     # pass
-    # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
     # print(advanced_decoding('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
     # print(viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
-    a = top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2)
-    for row in a:
-        print(row)
-
-    # '''
-    # Unsure of where issues are arising, possibly around dealing with beg / end cases
-    # current method:
-    # Create transition from states
-    #     N.N matrix
-    #     End has 0 probability away from it
-    #     Begin has 0 probability to it
-    #     rest are calculated as ones and value overwritten if in state file (+1)
-    #     then probabilities calculated from this
-    # create emission from symbols
-    #     N.K matrix
-    #     all initalised to zeros with column added for unknown
-    #     values overwritten from symbol file (+1) 
-    #     calculated probabilites
-    # 1. find initial probabilities from the transition matrix (BEGIN state)
-    #     please confirm?
-    # 2. iterate through each observation in y 
-    #     most of logic is here
-    #     first line T1[:, i - 1] * state_matrix.T * findVect_adv(symbol_matrix,symbol_cols,y[i]).T
-    #         times last states * prob next state given state * emission prob of observed
-    #         find max of this for each state // prob of that state
-    #         to matrix running probabilities
-    #     T2 -> this displays index of path. 
-    #         similar
-    #         last states probs * next states -> array of N by N, then for each N find max prob index.
-    # 3. first find argmax of last state 
-
-
-"""     print( out[:,cols.index(',')],\
-        out[:,cols.index('/')],\
-            out[:,cols.index('-')],\
-                out[:,cols.index('(')], \
-                    out[:,cols.index(')')], \
-                        out[:,cols.index('&')], sep = '\n|||||\n') 
-    out[:,cols.index('&')][23] = 1  # this seems to work pretty well but still sometimes produces wrong labels 
-    out[:,cols.index(',')][18] = 1
-    out[:,cols.index('/')][19] = 1
-    out[:,cols.index('-')][20] = 1  # including only up to this line gives 122 wrong labels
-    out[:,cols.index('(')][21] = 1  # adding this last two lines gives 118 wrong labels
-    out[:,cols.index(')')][22] = 1  # but the sentences that contain ( and ) are all classified with all 0's
-"""
+    # a = top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2)
+    # for row in a:
+    #     print(row)
