@@ -171,33 +171,4 @@ def advanced_decoding(State_File, Symbol_File, Query_File): # do not change the 
 
 
 if __name__=="__main__":
-    # pass
-    # print(parseAddress('P.O Box 6196, St.Kilda Rd Central, Melbourne, VIC 3001'))
     print(top_k_viterbi('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File',2))
-    # print(viterbi_algorithm('./dev_set/State_File','./dev_set/Symbol_File','./dev_set/Query_File'))
-    # '''
-    # Unsure of where issues are arising, possibly around dealing with beg / end cases
-    # current method:
-    # Create transition from states
-    #     N.N matrix
-    #     End has 0 probability away from it
-    #     Begin has 0 probability to it
-    #     rest are calculated as ones and value overwritten if in state file (+1)
-    #     then probabilities calculated from this
-    # create emission from symbols
-    #     N.K matrix
-    #     all initalised to zeros with column added for unknown
-    #     values overwritten from symbol file (+1) 
-    #     calculated probabilites
-    # 1. find initial probabilities from the transition matrix (BEGIN state)
-    #     please confirm?
-    # 2. iterate through each observation in y 
-    #     most of logic is here
-    #     first line T1[:, i - 1] * state_matrix.T * findVect(symbol_matrix,symbol_cols,y[i]).T
-    #         times last states * prob next state given state * emission prob of observed
-    #         find max of this for each state // prob of that state
-    #         to matrix running probabilities
-    #     T2 -> this displays index of path. 
-    #         similar
-    #         last states probs * next states -> array of N by N, then for each N find max prob index.
-    # 3. first find argmax of last state 
